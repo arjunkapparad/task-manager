@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1 style="text-align: center; color: brown;">Task Manager</h1>
+
+<input id="taskInput" placeholder="Enter task">
+<input type="date" id="taskDate">
+<button onclick="addTask()">Add Task</button>
+
+<ul id="taskList"></ul>
+
+<script>
+
+// ADD TASK
+async function addTask() {
+  let task = document.getElementById("taskInput").value;
+  let date = document.getElementById("taskDate").value;
+
+  if (task === "" || date === "") {
+    alert("Enter task and date");
+    return;
+  }
+
+  await fetch("http://localhost:3000/tasks", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: task,
+      date: date
+    })
+  });
+
+  loadTasks();
+
+  document.getElementById("taskInput").value = "";
+  document.getElementById("taskDate").value = "";
+}
+
+// LOAD TASKS
+async function loadTasks() {
+  let res = await fetch("http://localhost:3000/tasks");
+  let data = await res.json();
+
+  let list = document.getElementById("taskList");
+  list.innerHTML = "";
+
+  for (let i = 0; i < data.length; i++) {
+    let li = document.createElement("li");
+
+    let dateObj = new Date(data[i].date);
+    let day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+    // TEXT
+    li.textContent = data[i].name + " - " + data[i].date + " (" + day + ")";
+
+    // DELETE BUTTON
+    let delBtn = document.createElement("button");
+    delBtn.textContent = " Delete";
+
+    delBtn.onclick = async function() {
+      await fetch(`http://localhost:3000/tasks/${i}`, {
+        method: "DELETE"
+      });
+      loadTasks();
+    };
+
+    li.appendChild(delBtn);
+
+    // EDIT BUTTON
+    let editBtn = document.createElement("button");
+    editBtn.textContent = " Edit";
+
+    editBtn.onclick = async function() {
+      let newTask = prompt("Edit task:", data[i].name);
+      let newDate = prompt("Edit date (YYYY-MM-DD):", data[i].date);
+
+      if (newTask && newDate) {
+        await fetch(`http://localhost:3000/tasks/${i}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name: newTask,
+            date: newDate
+          })
+        });
+
+        loadTasks();
+      }
+    };
+
+    li.appendChild(editBtn);
+
+    list.appendChild(li);
+  }
+}
+
+// LOAD ON START
+loadTasks();
+
+</script>
+
+</body>
+</html>
