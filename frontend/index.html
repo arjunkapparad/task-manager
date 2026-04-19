@@ -1,16 +1,73 @@
 <!DOCTYPE html>
 <html>
+
+<head>
+<style>
+body {
+  font-family: Arial;
+  background: #f4f4f4;
+}
+
+.container {
+  width: 600px;
+  margin: auto;
+  text-align: center;
+}
+
+input, button {
+  margin: 5px;
+  padding: 8px;
+}
+
+ul {
+  padding: 0;
+}
+
+li {
+  background: white;
+  margin: 10px 0;
+  padding: 10px;
+  border-radius: 8px;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.task-text {
+  flex: 1;
+  text-align: left;
+}
+
+.task-actions button {
+  margin-left: 5px;
+}
+</style>
+</head>
+
 <body>
 
-<h1 style="text-align: center; color: brown;">Task Manager</h1>
+<div class="container">
+
+<h1 style="color: brown;">Task Manager</h1>
 
 <input id="taskInput" placeholder="Enter task">
 <input type="date" id="taskDate">
 <button onclick="addTask()">Add Task</button>
 
+<br>
+
+<button onclick="setFilter('all')">All</button>
+<button onclick="setFilter('completed')">Completed</button>
+<button onclick="setFilter('pending')">Pending</button>
+
 <ul id="taskList"></ul>
 
+</div>
+
 <script>
+
+let currentFilter = "all";
 
 // ADD TASK
 async function addTask() {
@@ -29,7 +86,8 @@ async function addTask() {
     },
     body: JSON.stringify({
       name: task,
-      date: date
+      date: date,
+      completed: false
     })
   });
 
@@ -37,6 +95,12 @@ async function addTask() {
 
   document.getElementById("taskInput").value = "";
   document.getElementById("taskDate").value = "";
+}
+
+// FILTER
+function setFilter(filter) {
+  currentFilter = filter;
+  loadTasks();
 }
 
 // LOAD TASKS
@@ -48,58 +112,84 @@ async function loadTasks() {
   list.innerHTML = "";
 
   for (let i = 0; i < data.length; i++) {
+
+    if (currentFilter === "completed" && !data[i].completed) continue;
+    if (currentFilter === "pending" && data[i].completed) continue;
+
     let li = document.createElement("li");
 
     let dateObj = new Date(data[i].date);
     let day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-    // TEXT
-    li.textContent = data[i].name + " - " + data[i].date + " (" + day + ")";
+    let status = data[i].completed
+      ? "<span style='color:green'>✔ Done</span>"
+      : "<span style='color:red'>✖ Pending</span>";
 
-    // DELETE BUTTON
+    // TEXT SECTION
+    let textDiv = document.createElement("div");
+    textDiv.className = "task-text";
+    textDiv.innerHTML = data[i].name + " - " + data[i].date + " (" + day + ") - " + status;
+
+    // BUTTON SECTION
+    let actionDiv = document.createElement("div");
+    actionDiv.className = "task-actions";
+
+    // DELETE
     let delBtn = document.createElement("button");
-    delBtn.textContent = " Delete";
-
+    delBtn.textContent = "Delete";
     delBtn.onclick = async function() {
-      await fetch(`http://localhost:3000/tasks/${i}`, {
-        method: "DELETE"
-      });
+      await fetch(`http://localhost:3000/tasks/${i}`, { method: "DELETE" });
       loadTasks();
     };
 
-    li.appendChild(delBtn);
-
-    // EDIT BUTTON
+    // EDIT
     let editBtn = document.createElement("button");
-    editBtn.textContent = " Edit";
-
+    editBtn.textContent = "Edit";
     editBtn.onclick = async function() {
       let newTask = prompt("Edit task:", data[i].name);
-      let newDate = prompt("Edit date (YYYY-MM-DD):", data[i].date);
+      let newDate = prompt("Edit date:", data[i].date);
 
       if (newTask && newDate) {
         await fetch(`http://localhost:3000/tasks/${i}`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: newTask,
-            date: newDate
+            date: newDate,
+            completed: data[i].completed
           })
         });
-
         loadTasks();
       }
     };
 
-    li.appendChild(editBtn);
+    // COMPLETE
+    let completeBtn = document.createElement("button");
+    completeBtn.textContent = data[i].completed ? "Undo" : "Complete";
+    completeBtn.onclick = async function() {
+      await fetch(`http://localhost:3000/tasks/${i}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data[i].name,
+          date: data[i].date,
+          completed: !data[i].completed
+        })
+      });
+      loadTasks();
+    };
+
+    actionDiv.appendChild(delBtn);
+    actionDiv.appendChild(editBtn);
+    actionDiv.appendChild(completeBtn);
+
+    li.appendChild(textDiv);
+    li.appendChild(actionDiv);
 
     list.appendChild(li);
   }
 }
 
-// LOAD ON START
 loadTasks();
 
 </script>
