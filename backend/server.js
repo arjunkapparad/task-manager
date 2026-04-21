@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 /* ================== MONGODB CONNECTION ================== */
-mongoose.connect("mongodb://127.0.0.1:27017/taskmanager")
+mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => console.log("DB ERROR:", err));
 
