@@ -1,67 +1,75 @@
 const express = require("express");
 const cors = require("cors");
+const mongoose = require("mongoose");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-let tasks = [];
+/* ================== MONGODB CONNECTION ================== */
+mongoose.connect("mongodb://127.0.0.1:27017/taskmanager")
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log("DB ERROR:", err));
+
+/* ================== SCHEMA ================== */
+const taskSchema = new mongoose.Schema({
+  name: String,
+  date: String,
+  completed: Boolean,
+  priority: String
+});
+
+const Task = mongoose.model("Task", taskSchema);
+
+/* ================== ROUTES ================== */
 
 // GET all tasks
-app.get("/tasks", (req, res) => {
+app.get("/tasks", async (req, res) => {
+  const tasks = await Task.find();
   res.json(tasks);
 });
 
 // POST new task
-app.post("/tasks", (req, res) => {
-  const { name, date, completed } = req.body;
+app.post("/tasks", async (req, res) => {
+  const { name, date, completed, priority } = req.body;
 
   if (!name || !date) {
     return res.status(400).json({ message: "Invalid task data" });
   }
 
-  tasks.push({
+  const newTask = await Task.create({
     name,
     date,
-    completed: completed || false
+    completed: completed || false,
+    priority: priority || "Low"
   });
 
-  res.json({ message: "Task added" });
+  res.json(newTask); // ✅ return created task (better)
 });
 
 // DELETE task
-app.delete("/tasks/:index", (req, res) => {
-  const index = parseInt(req.params.index);
-
-  if (index < 0 || index >= tasks.length) {
-    return res.status(404).json({ message: "Task not found" });
-  }
-
-  tasks.splice(index, 1);
+app.delete("/tasks/:id", async (req, res) => {
+  await Task.findByIdAndDelete(req.params.id);
   res.json({ message: "Task deleted" });
 });
 
-// PUT (UPDATE task)
-app.put("/tasks/:index", (req, res) => {
-  const index = parseInt(req.params.index);
+// UPDATE task
+app.put("/tasks/:id", async (req, res) => {
+  const { name, date, completed, priority } = req.body;
 
-  if (index < 0 || index >= tasks.length) {
-    return res.status(404).json({ message: "Task not found" });
-  }
+  const updatedTask = await Task.findByIdAndUpdate(
+    req.params.id,
+    { name, date, completed, priority },
+    { new: true } // ✅ returns updated data
+  );
 
-  const { name, date, completed } = req.body;
-
-  tasks[index] = {
-    name,
-    date,
-    completed
-  };
-
-  res.json({ message: "Task updated" });
+  res.json(updatedTask);
 });
 
-// START SERVER
-app.listen(3000, () => {
-  console.log("Server running on port 3000");
+/* ================== SERVER ================== */
+const PORT = 3000;
+
+app.listen(PORT, () => {
+  console.log("Server running on port " + PORT);
 });

@@ -14,7 +14,7 @@ body {
   text-align: center;
 }
 
-input, button {
+input, button, select {
   margin: 5px;
   padding: 8px;
 }
@@ -53,9 +53,18 @@ li {
 
 <input id="taskInput" placeholder="Enter task">
 <input type="date" id="taskDate">
+
+<select id="priority">
+  <option value="Low">Low</option>
+  <option value="Medium">Medium</option>
+  <option value="High">High</option>
+</select>
+
 <button onclick="addTask()">Add Task</button>
 
 <br>
+
+<input id="searchInput" placeholder="Search task..." onkeyup="loadTasks()">
 
 <button onclick="setFilter('all')">All</button>
 <button onclick="setFilter('completed')">Completed</button>
@@ -69,17 +78,21 @@ li {
 
 let currentFilter = "all";
 
+// ✅ ADD THIS LINE (central API)
+const API = "https://task-manager-g9qc.onrender.com";
+
 // ADD TASK
 async function addTask() {
   let task = document.getElementById("taskInput").value;
   let date = document.getElementById("taskDate").value;
+  let priority = document.getElementById("priority").value;
 
   if (task === "" || date === "") {
     alert("Enter task and date");
     return;
   }
 
-  await fetch("http://localhost:3000/tasks", {
+  await fetch(`${API}/tasks`, {   // ✅ FIXED
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -87,7 +100,8 @@ async function addTask() {
     body: JSON.stringify({
       name: task,
       date: date,
-      completed: false
+      completed: false,
+      priority: priority
     })
   });
 
@@ -105,18 +119,33 @@ function setFilter(filter) {
 
 // LOAD TASKS
 async function loadTasks() {
-  let res = await fetch("http://localhost:3000/tasks");
+  let res = await fetch(`${API}/tasks`);   // ✅ FIXED
   let data = await res.json();
 
+  data.forEach(task => {
+    if (!task.priority) task.priority = "Low";
+  });
+
+  data.sort((a, b) => {
+    const order = { High: 3, Medium: 2, Low: 1 };
+    return order[b.priority] - order[a.priority];
+  });
+
+  let search = document.getElementById("searchInput").value.toLowerCase();
   let list = document.getElementById("taskList");
   list.innerHTML = "";
 
   for (let i = 0; i < data.length; i++) {
 
+    if (!data[i].name.toLowerCase().includes(search)) continue;
     if (currentFilter === "completed" && !data[i].completed) continue;
     if (currentFilter === "pending" && data[i].completed) continue;
 
     let li = document.createElement("li");
+
+    li.style.borderLeft = data[i].completed
+      ? "5px solid green"
+      : "5px solid red";
 
     let dateObj = new Date(data[i].date);
     let day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
@@ -125,20 +154,30 @@ async function loadTasks() {
       ? "<span style='color:green'>✔ Done</span>"
       : "<span style='color:red'>✖ Pending</span>";
 
-    // TEXT SECTION
+    let priorityColor = {
+      High: "red",
+      Medium: "orange",
+      Low: "green"
+    };
+
+    let priorityText = `<span style="color:${priorityColor[data[i].priority]}">
+      [${data[i].priority}]
+    </span>`;
+
     let textDiv = document.createElement("div");
     textDiv.className = "task-text";
-    textDiv.innerHTML = data[i].name + " - " + data[i].date + " (" + day + ") - " + status;
+    textDiv.innerHTML =
+      `${data[i].name} - ${data[i].date} (${day}) - ${status} ${priorityText}`;
 
-    // BUTTON SECTION
     let actionDiv = document.createElement("div");
-    actionDiv.className = "task-actions";
 
     // DELETE
     let delBtn = document.createElement("button");
     delBtn.textContent = "Delete";
     delBtn.onclick = async function() {
-      await fetch(`http://localhost:3000/tasks/${i}`, { method: "DELETE" });
+      await fetch(`${API}/tasks/${data[i]._id}`, {   // ✅ FIXED
+        method: "DELETE"
+      });
       loadTasks();
     };
 
@@ -150,13 +189,14 @@ async function loadTasks() {
       let newDate = prompt("Edit date:", data[i].date);
 
       if (newTask && newDate) {
-        await fetch(`http://localhost:3000/tasks/${i}`, {
+        await fetch(`${API}/tasks/${data[i]._id}`, {   // ✅ FIXED
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             name: newTask,
             date: newDate,
-            completed: data[i].completed
+            completed: data[i].completed,
+            priority: data[i].priority
           })
         });
         loadTasks();
@@ -167,13 +207,14 @@ async function loadTasks() {
     let completeBtn = document.createElement("button");
     completeBtn.textContent = data[i].completed ? "Undo" : "Complete";
     completeBtn.onclick = async function() {
-      await fetch(`http://localhost:3000/tasks/${i}`, {
+      await fetch(`${API}/tasks/${data[i]._id}`, {   // ✅ FIXED
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: data[i].name,
           date: data[i].date,
-          completed: !data[i].completed
+          completed: !data[i].completed,
+          priority: data[i].priority
         })
       });
       loadTasks();
