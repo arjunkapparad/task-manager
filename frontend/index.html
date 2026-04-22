@@ -8,14 +8,28 @@ body {
 }
 
 .container {
-  width: 600px;
+  max-width: 800px;
   margin: auto;
+  padding: 20px;
   text-align: center;
 }
 
-input, button, select {
+input, select {
   margin: 5px;
   padding: 8px;
+}
+
+button {
+  margin: 5px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+button:hover {
+  opacity: 0.85;
 }
 
 ul {
@@ -23,23 +37,48 @@ ul {
 }
 
 li {
-  background: white;
-  margin: 10px 0;
-  padding: 10px;
-  border-radius: 8px;
+  background: #1e1e1e;
+  color: white;
+  margin: 12px 0;
+  padding: 15px;
+  border-radius: 12px;
   list-style: none;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .task-text {
-  flex: 1;
   text-align: left;
+  font-size: 14px;
 }
 
-.task-actions button {
-  margin-left: 5px;
+.task-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* 🔥 Button colors */
+.task-actions button:nth-child(1) {
+  background: #ff4d4d; /* Delete */
+  color: white;
+}
+
+.task-actions button:nth-child(2) {
+  background: #4da6ff; /* Edit */
+  color: white;
+}
+
+.task-actions button:nth-child(3) {
+  background: #28a745; /* Complete */
+  color: white;
+}
+
+@media (max-width: 600px) {
+  .container {
+    width: 95%;
+  }
 }
 </style>
 </head>
@@ -59,7 +98,7 @@ li {
   <option value="High">High</option>
 </select>
 
-<button onclick="addTask()">Add Task</button>
+<button onclick="addTask()" style="background:#28a745;color:white;">Add Task</button>
 
 <br>
 
@@ -68,6 +107,9 @@ li {
 <button onclick="setFilter('all')">All</button>
 <button onclick="setFilter('completed')">Completed</button>
 <button onclick="setFilter('pending')">Pending</button>
+
+<!-- 🔥 Stats -->
+<h3 id="stats"></h3>
 
 <ul id="taskList"></ul>
 
@@ -89,27 +131,21 @@ async function addTask() {
     return;
   }
 
-  try {
-    await fetch(`${API}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: task,
-        date,
-        completed: false,
-        priority
-      })
-    });
+  await fetch(`${API}/tasks`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: task,
+      date,
+      completed: false,
+      priority
+    })
+  });
 
-    document.getElementById("taskInput").value = "";
-    document.getElementById("taskDate").value = "";
+  document.getElementById("taskInput").value = "";
+  document.getElementById("taskDate").value = "";
 
-    loadTasks();
-
-  } catch (err) {
-    console.log(err);
-    alert("Error adding task");
-  }
+  loadTasks();
 }
 
 /* ================= FILTER ================= */
@@ -120,112 +156,106 @@ function setFilter(filter) {
 
 /* ================= LOAD TASKS ================= */
 async function loadTasks() {
-  try {
-    const res = await fetch(`${API}/tasks`);
-    const data = await res.json();
+  const res = await fetch(`${API}/tasks`);
+  const data = await res.json();
 
-    const search = document.getElementById("searchInput").value.toLowerCase();
-    const list = document.getElementById("taskList");
-    list.innerHTML = "";
+  const search = document.getElementById("searchInput").value.toLowerCase();
+  const list = document.getElementById("taskList");
+  list.innerHTML = "";
 
-    const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+  /* 🔥 stats */
+  document.getElementById("stats").innerText =
+    `Total: ${data.length} | Done: ${data.filter(t => t.completed).length}`;
 
-    data.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
+  const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+  data.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority]);
 
-    data.forEach(task => {
+  data.forEach(task => {
 
-      if (!task.name.toLowerCase().includes(search)) return;
-      if (currentFilter === "completed" && !task.completed) return;
-      if (currentFilter === "pending" && task.completed) return;
+    if (!task.name.toLowerCase().includes(search)) return;
+    if (currentFilter === "completed" && !task.completed) return;
+    if (currentFilter === "pending" && task.completed) return;
 
-      const li = document.createElement("li");
+    const li = document.createElement("li");
 
-      li.style.borderLeft = task.completed
-        ? "5px solid green"
-        : "5px solid red";
+    li.style.borderLeft = task.completed
+      ? "5px solid green"
+      : "5px solid red";
 
-      const dateObj = new Date(task.date);
-      const day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+    const dateObj = new Date(task.date);
+    const day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 
-      const status = task.completed
-        ? "<span style='color:green'>✔ Done</span>"
-        : "<span style='color:red'>✖ Pending</span>";
+    const status = task.completed
+      ? "<span style='color:green'>✔ Done</span>"
+      : "<span style='color:red'>✖ Pending</span>";
 
-      const priorityColor = {
-        High: "red",
-        Medium: "orange",
-        Low: "green"
-      };
+    const priorityColor = {
+      High: "red",
+      Medium: "orange",
+      Low: "green"
+    };
 
-      const textDiv = document.createElement("div");
-      textDiv.className = "task-text";
-      textDiv.innerHTML = `
-        ${task.name} - ${task.date} (${day}) - 
-        ${status} 
-        <span style="color:${priorityColor[task.priority]}">
-          [${task.priority}]
-        </span>
-      `;
+    const textDiv = document.createElement("div");
+    textDiv.className = "task-text";
+    textDiv.innerHTML = `
+      ${task.name} - ${task.date} (${day}) - 
+      ${status} 
+      <span style="color:${priorityColor[task.priority]}">
+        [${task.priority}]
+      </span>
+    `;
 
-      const actionDiv = document.createElement("div");
+    const actionDiv = document.createElement("div");
+    actionDiv.className = "task-actions";
 
-      /* DELETE */
-      const delBtn = document.createElement("button");
-      delBtn.textContent = "Delete";
-      delBtn.onclick = async () => {
-        await fetch(`${API}/tasks/${task._id}`, { method: "DELETE" });
-        loadTasks();
-      };
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "Delete";
+    delBtn.onclick = async () => {
+      await fetch(`${API}/tasks/${task._id}`, { method: "DELETE" });
+      loadTasks();
+    };
 
-      /* EDIT */
-      const editBtn = document.createElement("button");
-      editBtn.textContent = "Edit";
-      editBtn.onclick = async () => {
-        const newTask = prompt("Edit task:", task.name);
-        const newDate = prompt("Edit date:", task.date);
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "Edit";
+    editBtn.onclick = async () => {
+      const newTask = prompt("Edit task:", task.name);
+      const newDate = prompt("Edit date:", task.date);
 
-        if (newTask && newDate) {
-          await fetch(`${API}/tasks/${task._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              name: newTask,
-              date: newDate,
-              completed: task.completed,
-              priority: task.priority
-            })
-          });
-          loadTasks();
-        }
-      };
-
-      /* COMPLETE */
-      const completeBtn = document.createElement("button");
-      completeBtn.textContent = task.completed ? "Undo" : "Complete";
-      completeBtn.onclick = async () => {
+      if (newTask && newDate) {
         await fetch(`${API}/tasks/${task._id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: task.name,
-            date: task.date,
-            completed: !task.completed,
+            name: newTask,
+            date: newDate,
+            completed: task.completed,
             priority: task.priority
           })
         });
         loadTasks();
-      };
+      }
+    };
 
-      actionDiv.append(delBtn, editBtn, completeBtn);
+    const completeBtn = document.createElement("button");
+    completeBtn.textContent = task.completed ? "Undo" : "Complete";
+    completeBtn.onclick = async () => {
+      await fetch(`${API}/tasks/${task._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: task.name,
+          date: task.date,
+          completed: !task.completed,
+          priority: task.priority
+        })
+      });
+      loadTasks();
+    };
 
-      li.append(textDiv, actionDiv);
-      list.appendChild(li);
-    });
-
-  } catch (err) {
-    console.log(err);
-    alert("Error loading tasks");
-  }
+    actionDiv.append(delBtn, editBtn, completeBtn);
+    li.append(textDiv, actionDiv);
+    list.appendChild(li);
+  });
 }
 
 loadTasks();
@@ -233,3 +263,4 @@ loadTasks();
 </script>
 
 </body>
+</html>
