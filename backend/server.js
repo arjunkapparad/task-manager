@@ -9,9 +9,13 @@ app.use(cors());
 app.use(express.json());
 
 /* ================== MONGODB CONNECTION ================== */
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("DB ERROR:", err));
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 5000
+})
+.then(() => console.log("MongoDB connected"))
+.catch(err => console.log("DB ERROR:", err));
 
 /* ================== SCHEMA ================== */
 const taskSchema = new mongoose.Schema({
@@ -25,22 +29,20 @@ const Task = mongoose.model("Task", taskSchema);
 
 /* ================== ROUTES ================== */
 
-// ROOT (for testing)
 app.get("/", (req, res) => {
   res.send("Server working 🚀");
 });
 
-// GET all tasks
 app.get("/tasks", async (req, res) => {
   try {
     const tasks = await Task.find();
     res.json(tasks);
   } catch (err) {
+    console.log(err); // 👈 important for debugging
     res.status(500).json({ error: err.message });
   }
 });
 
-// POST new task
 app.post("/tasks", async (req, res) => {
   try {
     const { name, date, completed, priority } = req.body;
@@ -57,23 +59,22 @@ app.post("/tasks", async (req, res) => {
     });
 
     res.json(newTask);
-
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// DELETE task ✅ FIXED
 app.delete("/tasks/:id", async (req, res) => {
   try {
     await Task.findByIdAndDelete(req.params.id);
     res.json({ message: "Task deleted" });
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 });
 
-// UPDATE task ✅ FIXED
 app.put("/tasks/:id", async (req, res) => {
   try {
     const { name, date, completed, priority } = req.body;
@@ -85,8 +86,8 @@ app.put("/tasks/:id", async (req, res) => {
     );
 
     res.json(updatedTask);
-
   } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 });
