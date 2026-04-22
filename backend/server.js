@@ -11,13 +11,9 @@ app.use(cors());
 app.use(express.json());
 
 /* ================== MONGODB CONNECTION ================== */
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000
-})
-.then(() => console.log("MongoDB connected"))
-.catch(err => console.log("DB ERROR:", err));
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("MongoDB connected"))
+  .catch(err => console.log("DB ERROR:", err));
 
 /* ================== SCHEMA ================== */
 const taskSchema = new mongoose.Schema({
@@ -40,7 +36,7 @@ app.get("/tasks", async (req, res) => {
     const tasks = await Task.find();
     res.json(tasks);
   } catch (err) {
-    console.log(err); // 👈 important for debugging
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 });
