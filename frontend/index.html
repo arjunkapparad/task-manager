@@ -3,25 +3,40 @@
 <head>
 <style>
 body {
-  font-family: Arial;
-  background: #f4f4f4;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+  margin: 0;
 }
 
 .container {
-  max-width: 800px;
+  max-width: 600px;
   margin: auto;
-  padding: 20px;
-  text-align: center;
+  padding: 30px 15px;
 }
 
+h1 {
+  margin-bottom: 20px;
+}
+
+/* layout rows */
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+/* inputs */
 input, select {
-  margin: 5px;
-  padding: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
 }
 
+/* buttons */
 button {
-  margin: 5px;
-  padding: 6px 10px;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -32,49 +47,59 @@ button:hover {
   opacity: 0.85;
 }
 
+/* list */
 ul {
   padding: 0;
 }
 
 li {
-  background: #1e1e1e;
-  color: white;
+  background: white;
+  color: #0f172a;
   margin: 12px 0;
   padding: 15px;
-  border-radius: 12px;
+  border-radius: 10px;
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  border: 1px solid #e2e8f0;
 }
 
 .task-text {
-  text-align: left;
   font-size: 14px;
 }
 
+/* actions */
 .task-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 
-/* 🔥 Button colors */
+/* button colors */
 .task-actions button:nth-child(1) {
-  background: #ff4d4d; /* Delete */
+  background: #ef4444;
   color: white;
 }
 
 .task-actions button:nth-child(2) {
-  background: #4da6ff; /* Edit */
+  background: #3b82f6;
   color: white;
 }
 
 .task-actions button:nth-child(3) {
-  background: #28a745; /* Complete */
+  background: #22c55e;
   color: white;
 }
 
+/* stats */
+#stats {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* mobile */
 @media (max-width: 600px) {
   .container {
     width: 95%;
@@ -87,28 +112,28 @@ li {
 
 <div class="container">
 
-<h1 style="color: brown;">Task Manager</h1>
+<h1>Task Manager</h1>
 
-<input id="taskInput" placeholder="Enter task">
-<input type="date" id="taskDate">
+<!-- 🔥 ADD TASK SECTION -->
+<div class="controls">
+  <input id="taskInput" placeholder="Enter task">
+  <input type="date" id="taskDate">
+  <select id="priority">
+    <option value="Low">Low</option>
+    <option value="Medium">Medium</option>
+    <option value="High">High</option>
+  </select>
+  <button onclick="addTask()" style="background:#22c55e;color:white;">Add</button>
+</div>
 
-<select id="priority">
-  <option value="Low">Low</option>
-  <option value="Medium">Medium</option>
-  <option value="High">High</option>
-</select>
+<!-- 🔥 SEARCH + FILTER -->
+<div class="controls">
+  <input id="searchInput" placeholder="Search..." onkeyup="loadTasks()">
+  <button onclick="setFilter('all')">All</button>
+  <button onclick="setFilter('completed')">Done</button>
+  <button onclick="setFilter('pending')">Pending</button>
+</div>
 
-<button onclick="addTask()" style="background:#28a745;color:white;">Add Task</button>
-
-<br>
-
-<input id="searchInput" placeholder="Search task..." onkeyup="loadTasks()">
-
-<button onclick="setFilter('all')">All</button>
-<button onclick="setFilter('completed')">Completed</button>
-<button onclick="setFilter('pending')">Pending</button>
-
-<!-- 🔥 Stats -->
 <h3 id="stats"></h3>
 
 <ul id="taskList"></ul>
@@ -163,7 +188,6 @@ async function loadTasks() {
   const list = document.getElementById("taskList");
   list.innerHTML = "";
 
-  /* 🔥 stats */
   document.getElementById("stats").innerText =
     `Total: ${data.length} | Done: ${data.filter(t => t.completed).length}`;
 
@@ -177,10 +201,6 @@ async function loadTasks() {
     if (currentFilter === "pending" && task.completed) return;
 
     const li = document.createElement("li");
-
-    li.style.borderLeft = task.completed
-      ? "5px solid green"
-      : "5px solid red";
 
     const dateObj = new Date(task.date);
     const day = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
