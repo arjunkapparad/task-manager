@@ -3,8 +3,6 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 require("dotenv").config();
 
-console.log("MONGO_URI:", process.env.MONGO_URI);
-
 const app = express();
 
 app.use(cors());
@@ -13,80 +11,85 @@ app.use(express.json());
 /* ================== MONGODB CONNECTION ================== */
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log("DB ERROR:", err));
+  .catch(err => {
+    console.error("DB ERROR:", err);
+    process.exit(1); // 🔥 crash if DB fails (important in prod)
+  });
 
 /* ================== SCHEMA ================== */
 const taskSchema = new mongoose.Schema({
-  name: String,
-  date: String,
-  completed: Boolean,
-  priority: String
+  name: { type: String, required: true },
+  date: { type: String, required: true },
+  completed: { type: Boolean, default: false },
+  priority: { type: String, default: "Low" }
 });
 
 const Task = mongoose.model("Task", taskSchema);
 
 /* ================== ROUTES ================== */
 
+// ROOT
 app.get("/", (req, res) => {
   res.send("Server working 🚀");
 });
 
+// GET all tasks
 app.get("/tasks", async (req, res) => {
   try {
     const tasks = await Task.find();
     res.json(tasks);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch tasks" });
   }
 });
 
+// POST new task
 app.post("/tasks", async (req, res) => {
   try {
-    const { name, date, completed, priority } = req.body;
+    const { name, date, priority } = req.body;
 
     if (!name || !date) {
-      return res.status(400).json({ message: "Invalid task data" });
+      return res.status(400).json({ error: "Name and date required" });
     }
 
     const newTask = await Task.create({
       name,
       date,
-      completed: completed || false,
-      priority: priority || "Low"
+      priority
     });
 
-    res.json(newTask);
+    res.status(201).json(newTask);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Failed to create task" });
   }
 });
 
+// DELETE task
 app.delete("/tasks/:id", async (req, res) => {
   try {
     await Task.findByIdAndDelete(req.params.id);
     res.json({ message: "Task deleted" });
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Delete failed" });
   }
 });
 
+// UPDATE task
 app.put("/tasks/:id", async (req, res) => {
   try {
-    const { name, date, completed, priority } = req.body;
-
     const updatedTask = await Task.findByIdAndUpdate(
       req.params.id,
-      { name, date, completed, priority },
+      req.body,
       { new: true }
     );
 
     res.json(updatedTask);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Update failed" });
   }
 });
 
@@ -94,5 +97,5 @@ app.put("/tasks/:id", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
+  console.log(`Server running on port ${PORT}`);
 });
