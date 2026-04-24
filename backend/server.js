@@ -1,6 +1,8 @@
+console.log("MONGO_URI:", process.env.MONGO_URI);
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
 require("dotenv").config();
 
 const app = express();
@@ -13,10 +15,19 @@ mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
   .catch(err => {
     console.error("DB ERROR:", err);
-    process.exit(1); // 🔥 crash if DB fails (important in prod)
+    process.exit(1);
   });
 
-/* ================== SCHEMA ================== */
+/* ================== USER SCHEMA ================== */
+const userSchema = new mongoose.Schema({
+  name: String,
+  email: { type: String, unique: true },
+  password: String
+});
+
+const User = mongoose.model("User", userSchema);
+
+/* ================== TASK SCHEMA ================== */
 const taskSchema = new mongoose.Schema({
   name: { type: String, required: true },
   date: { type: String, required: true },
@@ -32,6 +43,64 @@ const Task = mongoose.model("Task", taskSchema);
 app.get("/", (req, res) => {
   res.send("Server working 🚀");
 });
+
+/* ================== AUTH ================== */
+
+// SIGNUP
+app.post("/signup", async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "All fields required" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "User already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await User.create({
+      name,
+      email,
+      password: hashedPassword
+    });
+
+    res.json({ message: "User created" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Signup failed" });
+  }
+});
+
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // check user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // compare password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Wrong password" });
+    }
+
+    res.json({ message: "Login successful" });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Login failed" });
+  }
+});
+
+/* ================== TASK ROUTES ================== */
 
 // GET all tasks
 app.get("/tasks", async (req, res) => {
